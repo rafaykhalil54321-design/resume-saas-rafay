@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // ✨ FIX: useEffect add kiya
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // ✨ FIX 1: Agar pehle se login hai, toh direct main page (/) par bhejo
+  useEffect(() => {
+    if (localStorage.getItem('resume_user')) {
+      router.replace('/');
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +33,8 @@ export default function LoginPage() {
         const savedUser = JSON.parse(savedUserStr);
         if (savedUser.email === email && savedUser.password === password) {
           
-          // ✨ MAGIC FIX: push ki jagah 'replace' use kiya hai. 
-          // Ab browser history mein login page save nahi hoga!
-          router.replace('/builder');
+          // ✨ FIX 2: /builder ki jagah / (Dashboard) par bhejo
+          router.replace('/');
           
         } else {
           setErrorMessage('Invalid email or password. Please try again.');
