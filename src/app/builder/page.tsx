@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // ✨ 1. Naya Import
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 export default function BuilderPage() {
+  const router = useRouter(); // ✨ 2. Router initialize kiya
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 
@@ -20,13 +22,45 @@ export default function BuilderPage() {
   
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [template, setTemplate] = useState<'executive' | 'creative' | 'dark' | 'reversed'>('executive');
+  
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // States: Save functionality ke liye
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  // ✨ NEW: Jab page load ho, toh LocalStorage se user ka naam aur email check karke form mein daal do
+  // ✨ EDIT MODE LOGIC & AUTH CHECK
   useEffect(() => {
+    // ✨ 3. THE FIX: Agar login nahi hai toh sidha login page par nikalo!
     const savedUserStr = localStorage.getItem('resume_user');
-    if (savedUserStr) {
+    if (!savedUserStr) {
+      router.push('/login');
+      return;
+    }
+
+    const editId = localStorage.getItem('edit_resume_id');
+    
+    if (editId) {
+      // Editing existing resume
+      const existingResumes = JSON.parse(localStorage.getItem('my_resumes') || '[]');
+      const resumeToEdit = existingResumes.find((r: any) => r.id.toString() === editId);
+      
+      if (resumeToEdit) {
+        setPersonalInfo(resumeToEdit.data.personalInfo);
+        setExperiences(resumeToEdit.data.experiences);
+        setEducations(resumeToEdit.data.educations);
+        setSkills(resumeToEdit.data.skills);
+        setExtraSectionTitle(resumeToEdit.data.extraSectionTitle);
+        setExtraSectionContent(resumeToEdit.data.extraSectionContent);
+        setReference(resumeToEdit.data.reference || { name: '', company: '', contact: '' });
+        setProfilePic(resumeToEdit.data.profilePic);
+        setTemplate(resumeToEdit.template);
+        setEditingId(resumeToEdit.id);
+      }
+      localStorage.removeItem('edit_resume_id'); // Clear it
+    } else {
+      // Creating new resume, pre-fill just basic user info
       const savedUser = JSON.parse(savedUserStr);
       setPersonalInfo(prev => ({
         ...prev,
@@ -34,9 +68,8 @@ export default function BuilderPage() {
         email: savedUser.email || ''
       }));
     }
-  }, []);
+  }, [router]); // ✨ 4. Router dependency
 
-  // Handlers
   const handlePersonalChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setPersonalInfo({ ...personalInfo, [e.target.name]: e.target.value });
   const handleExpChange = (index: number, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { const newExp = [...experiences]; newExp[index] = { ...newExp[index], [e.target.name]: e.target.value }; setExperiences(newExp); };
   const addExperience = () => setExperiences([...experiences, { id: Date.now(), company: '', position: '', duration: '', description: '' }]);
@@ -94,6 +127,34 @@ export default function BuilderPage() {
     } finally { 
       setIsDownloading(false); 
     }
+  };
+
+  // NAYA FUNCTION: Resume ko save karne ke liye
+  const handleSaveResume = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+        const resumeData = {
+            id: editingId || Date.now(), 
+            title: personalInfo.jobTitle ? `${personalInfo.fullName} - ${personalInfo.jobTitle}` : 'My Professional Resume',
+            date: new Date().toLocaleDateString(),
+            template: template,
+            data: { personalInfo, experiences, educations, skills, extraSectionTitle, extraSectionContent, reference, profilePic }
+        };
+
+        let existing = JSON.parse(localStorage.getItem('my_resumes') || '[]');
+        
+        if (editingId) {
+            existing = existing.map((r: any) => r.id === editingId ? resumeData : r);
+        } else {
+            existing.push(resumeData);
+            setEditingId(resumeData.id); 
+        }
+        
+        localStorage.setItem('my_resumes', JSON.stringify(existing));
+
+        setIsSaving(false);
+        alert('Resume saved to Dashboard successfully! 🎉');
+    }, 800);
   };
 
   return (
@@ -252,9 +313,16 @@ export default function BuilderPage() {
                   </div>
                 </div>
                 
-                <button onClick={handleDownloadPDF} disabled={isDownloading} className={`w-full py-4 mt-8 text-white font-bold bg-blue-600 rounded-xl shadow-lg hover:bg-blue-700 transition-all ${isDownloading ? 'opacity-75 cursor-wait' : ''}`}>
-                  {isDownloading ? 'Generating PDF...' : 'Download My Resume'}
-                </button>
+                {/* ✨ NAYE BUTTONS: Save to Dashboard OR Download PDF */}
+                <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                  <button onClick={handleSaveResume} disabled={isSaving} className={`flex-1 py-4 text-blue-600 font-bold bg-blue-50 border-2 border-blue-600 rounded-xl shadow-sm hover:bg-blue-100 transition-all ${isSaving ? 'opacity-75 cursor-wait' : ''}`}>
+                    {isSaving ? 'Saving...' : 'Save to Dashboard'}
+                  </button>
+                  <button onClick={handleDownloadPDF} disabled={isDownloading} className={`flex-1 py-4 text-white font-bold bg-blue-600 rounded-xl shadow-lg hover:bg-blue-700 transition-all ${isDownloading ? 'opacity-75 cursor-wait' : ''}`}>
+                    {isDownloading ? 'Generating PDF...' : 'Download My Resume'}
+                  </button>
+                </div>
+
               </div>
             )}
 
