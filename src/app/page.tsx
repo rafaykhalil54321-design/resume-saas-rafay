@@ -16,26 +16,31 @@ export default function Home() {
   useEffect(() => {
     const savedUserStr = localStorage.getItem('resume_user');
     
-    if (savedUserStr) {
-      const savedUser = JSON.parse(savedUserStr);
-      setIsLoggedIn(true);
-      setUserName(savedUser.name);
-      
-      const nameParts = savedUser.name.trim().split(' ');
-      if (nameParts.length > 1) {
-        setUserInitials((nameParts[0][0] + nameParts[1][0]).toUpperCase());
-      } else if (nameParts.length === 1 && nameParts[0].length > 0) {
-        setUserInitials(nameParts[0][0].toUpperCase());
-      }
-
-      const savedResumesStr = localStorage.getItem('my_resumes');
-      if (savedResumesStr) {
-        setMyResumes(JSON.parse(savedResumesStr));
-      }
-      setIsCheckingAuth(false);
-    } else {
-      router.replace('/login');
+    // ✨ THE FIX: Agar banda login nahi hai, toh 100% Force Redirect maaro!
+    if (!savedUserStr) {
+      window.location.replace('/login');
+      return;
     }
+
+    // Agar login hai, toh details set karo
+    const savedUser = JSON.parse(savedUserStr);
+    setIsLoggedIn(true);
+    setUserName(savedUser.name);
+    
+    const nameParts = savedUser.name.trim().split(' ');
+    if (nameParts.length > 1) {
+      setUserInitials((nameParts[0][0] + nameParts[1][0]).toUpperCase());
+    } else if (nameParts.length === 1 && nameParts[0].length > 0) {
+      setUserInitials(nameParts[0][0].toUpperCase());
+    }
+
+    const savedResumesStr = localStorage.getItem('my_resumes');
+    if (savedResumesStr) {
+      setMyResumes(JSON.parse(savedResumesStr));
+    }
+    
+    // Auth check complete, ab Dashboard dikhao
+    setIsCheckingAuth(false);
   }, [router]);
 
   const handleCreateClick = (e: React.MouseEvent) => {
@@ -46,7 +51,7 @@ export default function Home() {
 
   const handleLogout = () => {
       localStorage.removeItem('resume_user');
-      router.replace('/login');
+      window.location.replace('/login');
   };
 
   const editResume = (id: number) => {
@@ -62,6 +67,7 @@ export default function Home() {
       }
   };
 
+  // Jab tak check ho raha hai, screen blank rakho taake Dashboard na dikhe
   if (isCheckingAuth) {
     return <div className="min-h-screen bg-[#F8FAFC]"></div>; 
   }
@@ -69,7 +75,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900">
       
-      {/* Navigation Bar (White, Clean) */}
+      {/* Navigation Bar */}
       <nav className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -119,13 +125,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* YOUR SAVED RESUMES SECTION (Added here in the white layout) */}
+      {/* SAVED RESUMES SECTION */}
       <section id="my-resumes" className="py-12 bg-white border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-extrabold text-slate-900 mb-8">Your Saved Documents</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Create New Card */}
             <div onClick={handleCreateClick} className="h-72 border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-400 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer group">
               <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:scale-110 transition-transform mb-4">
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -133,7 +138,6 @@ export default function Home() {
               <span className="font-bold text-slate-600 group-hover:text-blue-700">Create New</span>
             </div>
 
-            {/* Map over saved resumes */}
             {myResumes.map((resume, idx) => (
               <div key={idx} className="h-72 border border-slate-200 bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all relative group flex flex-col">
                 <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-slate-700 shadow-sm z-10">{resume.date}</div>
